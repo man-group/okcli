@@ -1,7 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals
+
 import pytest
-from mock import patch
+
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
 
@@ -16,7 +17,7 @@ metadata = {
 @pytest.fixture
 def completer():
 
-    import mycli.sqlcompleter as sqlcompleter
+    import oracli.sqlcompleter as sqlcompleter
     comp = sqlcompleter.SQLCompleter(smart_completion=True)
 
     tables, columns = [], []
@@ -26,9 +27,9 @@ def completer():
         columns.extend([(table, col) for col in cols])
 
     comp.set_dbname('test')
-    comp.extend_schemata('test')
-    comp.extend_relations(tables, kind='tables')
-    comp.extend_columns(columns, kind='tables')
+    comp.extend_schemata(['test'])
+    comp.extend_relations(tables, kind='tables', schema='test')
+    comp.extend_columns(columns, kind='tables', schema='test')
 
     return comp
 
@@ -64,8 +65,8 @@ def test_table_completion(completer, complete_event):
     result = completer.get_completions(
         Document(text=text, cursor_position=position), complete_event)
     assert set(result) == set([Completion(text='users', start_position=0),
-                               Completion(text='`select`', start_position=0),
-                               Completion(text='`réveillé`', start_position=0),
+                               Completion(text='select', start_position=0),
+                               Completion(text='réveillé', start_position=0),
                                Completion(text='orders', start_position=0)])
 
 
@@ -74,9 +75,9 @@ def test_function_name_completion(completer, complete_event):
     position = len('SELECT MA')
     result = completer.get_completions(
         Document(text=text, cursor_position=position), complete_event)
-    assert set(result) == set([Completion(text='MAX', start_position=-2),
-                               Completion(text='MASTER', start_position=-2),
-                               ])
+    assert len(set(result)) == 11
+    for completion in result:
+        assert completion.text.startswith('MA')
 
 
 def test_suggested_column_names(completer, complete_event):
@@ -289,78 +290,7 @@ def test_table_names_after_from(completer, complete_event):
     assert set(result) == set([
         Completion(text='users', start_position=0),
         Completion(text='orders', start_position=0),
-        Completion(text='`réveillé`', start_position=0),
-        Completion(text='`select`', start_position=0),
+        Completion(text='réveillé', start_position=0),
+        Completion(text='select', start_position=0),
     ])
 
-
-def test_auto_escaped_col_names(completer, complete_event):
-    text = 'SELECT  from `select`'
-    position = len('SELECT ')
-    result = set(completer.get_completions(
-        Document(text=text, cursor_position=position),
-        complete_event))
-    assert set(result) == set([
-        Completion(text='*', start_position=0),
-        Completion(text='id', start_position=0),
-        Completion(text='`insert`', start_position=0),
-        Completion(text='`ABC`', start_position=0), ] +
-        list(map(Completion, completer.functions)) +
-        list(map(Completion, completer.keywords)))
-
-
-def test_un_escaped_table_names(completer, complete_event):
-    text = 'SELECT  from réveillé'
-    position = len('SELECT ')
-    result = set(completer.get_completions(
-        Document(text=text, cursor_position=position),
-        complete_event))
-    assert set(result) == set([
-        Completion(text='*', start_position=0),
-        Completion(text='id', start_position=0),
-        Completion(text='`insert`', start_position=0),
-        Completion(text='`ABC`', start_position=0), ] +
-        list(map(Completion, completer.functions)) +
-        list(map(Completion, completer.keywords)))
-
-
-def dummy_list_path(dir_name):
-    dirs = {
-        '/': [
-            'dir1',
-            'file1.sql',
-            'file2.sql',
-        ],
-        '/dir1': [
-            'subdir1',
-            'subfile1.sql',
-            'subfile2.sql',
-        ],
-        '/dir1/subdir1': [
-            'lastfile.sql',
-        ],
-    }
-    return dirs.get(dir_name, [])
-
-
-@patch('mycli.packages.filepaths.list_path', new=dummy_list_path)
-@pytest.mark.parametrize('text,expected', [
-    ('source ',  [('~', 0),
-                  ('/', 0),
-                  ('.', 0),
-                  ('..', 0)]),
-    ('source /', [('dir1', 0),
-                  ('file1.sql', 0),
-                  ('file2.sql', 0)]),
-    ('source /dir1/', [('subdir1', 0),
-                       ('subfile1.sql', 0),
-                       ('subfile2.sql', 0)]),
-    ('source /dir1/subdir1/', [('lastfile.sql', 0)]),
-])
-def test_file_name_completion(completer, complete_event, text, expected):
-    position = len(text)
-    result = set(completer.get_completions(
-        Document(text=text, cursor_position=position),
-        complete_event))
-    expected = set([Completion(txt, pos) for txt, pos in expected])
-    assert result == expected

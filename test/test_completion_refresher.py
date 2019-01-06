@@ -1,11 +1,13 @@
 import time
+
 import pytest
+
 from mock import Mock, patch
 
 
 @pytest.fixture
 def refresher():
-    from mycli.completion_refresher import CompletionRefresher
+    from oracli.completion_refresher import CompletionRefresher
     return CompletionRefresher()
 
 
@@ -19,7 +21,7 @@ def test_ctor(refresher):
     assert len(refresher.refreshers) > 0
     actual_handlers = list(refresher.refreshers.keys())
     expected_handlers = ['databases', 'schemata', 'tables', 'users', 'functions',
-                         'special_commands', 'show_commands']
+                         'special_commands']
     assert expected_handlers == actual_handlers
 
 
@@ -80,7 +82,7 @@ def test_refresh_with_callbacks(refresher):
     sqlexecute_class = Mock()
     sqlexecute = Mock()
 
-    with patch('mycli.completion_refresher.SQLExecute', sqlexecute_class):
+    with patch('oracli.completion_refresher.SQLExecute', sqlexecute_class):
         # Set refreshers to 0: we're not testing refresh logic here
         refresher.refreshers = {}
         refresher.refresh(sqlexecute, callbacks)

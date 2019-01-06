@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
+
 import pytest
+
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
 
 
 @pytest.fixture
 def completer():
-    import mycli.sqlcompleter as sqlcompleter
+    import oracli.sqlcompleter as sqlcompleter
     return sqlcompleter.SQLCompleter(smart_completion=False)
 
 
@@ -40,9 +42,13 @@ def test_function_name_completion(completer, complete_event):
     result = set(completer.get_completions(
         Document(text=text, cursor_position=position),
         complete_event))
-    assert result == set([
-        Completion(text='MAX', start_position=-2),
-        Completion(text='MASTER', start_position=-2)])
+    assert len(result) == 11
+    for completion in result:
+        assert completion.text.startswith('MA')
+        assert completion.start_position == -2
+        if completion.text == 'MAX':
+            has_max = True
+    assert has_max, "'select MA' includes 'select MAX' in completion results"
 
 
 def test_column_name_completion(completer, complete_event):
@@ -52,3 +58,4 @@ def test_column_name_completion(completer, complete_event):
         Document(text=text, cursor_position=position),
         complete_event))
     assert result == set(map(Completion, completer.all_completions))
+

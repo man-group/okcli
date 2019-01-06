@@ -1,28 +1,20 @@
-# -*- coding: utf-8 -*-
+from os import getenv
 
-
-import os
-import time
-import signal
-import platform
-import multiprocessing
-
-import pymysql
 import pytest
 
-from mycli.main import special
+from oracli.main import special
 
-PASSWORD = os.getenv('PYTEST_PASSWORD')
-USER = os.getenv('PYTEST_USER', 'root')
-HOST = os.getenv('PYTEST_HOST', 'localhost')
-PORT = os.getenv('PYTEST_PORT', 3306)
-CHARSET = os.getenv('PYTEST_CHARSET', 'utf8')
+PASSWORD = getenv('PYTEST_PASSWORD')
+USER = getenv('PYTEST_USER')
+HOST = getenv('PYTEST_HOST')
+SCHEMA = getenv('PYTEST_SCHEMA')
+CHARSET = getenv('PYTEST_CHARSET', 'utf8')
 
 
-def db_connection(dbname=None):
-    conn = pymysql.connect(user=USER, host=HOST, port=PORT, database=dbname,
-                           password=PASSWORD, charset=CHARSET,
-                           local_infile=False)
+def db_connection(dbname=SCHEMA):
+    import cx_Oracle
+    conn = cx_Oracle.connect(user=USER, password=PASSWORD, dsn=HOST)
+    conn.current_schema = dbname
     conn.autocommit = True
     return conn
 
@@ -30,21 +22,12 @@ def db_connection(dbname=None):
 try:
     db_connection()
     CAN_CONNECT_TO_DB = True
-except:
+except Exception as e:
     CAN_CONNECT_TO_DB = False
 
 dbtest = pytest.mark.skipif(
     not CAN_CONNECT_TO_DB,
-    reason="Need a mysql instance at localhost accessible by user 'root'")
-
-
-def create_db(dbname):
-    with db_connection().cursor() as cur:
-        try:
-            cur.execute('''DROP DATABASE IF EXISTS _test_db''')
-            cur.execute('''CREATE DATABASE _test_db''')
-        except:
-            pass
+    reason="Need an Oracle-DB instance")
 
 
 def run(executor, sql, rows_as_list=True):
@@ -68,27 +51,3 @@ def is_expanded_output():
     """Pass-through for the tests."""
     return special.is_expanded_output()
 
-
-def send_ctrl_c_to_pid(pid, wait_seconds):
-    """Sends a Ctrl-C like signal to the given `pid` after `wait_seconds`
-    seconds."""
-    time.sleep(wait_seconds)
-    system_name = platform.system()
-    if system_name == "Windows":
-        os.kill(pid, signal.CTRL_C_EVENT)
-    else:
-        os.kill(pid, signal.SIGINT)
-
-
-def send_ctrl_c(wait_seconds):
-    """Create a process that sends a Ctrl-C like signal to the current process
-    after `wait_seconds` seconds.
-
-    Returns the `multiprocessing.Process` created.
-
-    """
-    ctrl_c_process = multiprocessing.Process(
-        target=send_ctrl_c_to_pid, args=(os.getpid(), wait_seconds)
-    )
-    ctrl_c_process.start()
-    return ctrl_c_process
