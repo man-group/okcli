@@ -1,0 +1,327 @@
+import locale
+import logging
+import os
+import re
+import subprocess
+from io import open
+
+import click
+
+import sqlparse
+
+from .favoritequeries import favoritequeries
+from .main import NO_QUERY, PARSED_QUERY, special_command
+from .utils import handle_cd_command
+
+TIMING_ENABLED = False
+use_expanded_output = False
+PAGER_ENABLED = True
+tee_file = None
+once_file = written_to_once_file = None
+
+
+def set_timing_enabled(val):
+    global TIMING_ENABLED
+    TIMING_ENABLED = val
+
+
+def set_pager_enabled(val):
+    global PAGER_ENABLED
+    PAGER_ENABLED = val
+
+
+def is_pager_enabled():
+    return PAGER_ENABLED
+
+
+@special_command('pager', '\\P [command]',
+                 'Set PAGER. Print the query results via PAGER.',
+                 arg_type=PARSED_QUERY, aliases=('\\P', ), case_sensitive=True)
+def set_pager(arg, **_):
+    if arg:
+        os.environ['PAGER'] = arg
+        msg = 'PAGER set to %s.' % arg
+        set_pager_enabled(True)
+    else:
+        if 'PAGER' in os.environ:
+            msg = 'PAGER set to %s.' % os.environ['PAGER']
+        else:
+            # This uses click's default per echo_via_pager.
+            msg = 'Pager enabled.'
+        set_pager_enabled(True)
+
+    return [(None, None, None, msg)]
+
+
+@special_command('nopager', '\\n', 'Disable pager, print to stdout.',
+                 arg_type=NO_QUERY, aliases=('\\n', ), case_sensitive=True)
+def disable_pager():
+    set_pager_enabled(False)
+    return [(None, None, None, 'Pager disabled.')]
+
+
+@special_command('\\timing', '\\t', 'Toggle timing of commands.', arg_type=NO_QUERY, aliases=('\\t', ), case_sensitive=True)
+def toggle_timing():
+    global TIMING_ENABLED
+    TIMING_ENABLED = not TIMING_ENABLED
+    message = "Timing is "
+    message += "on." if TIMING_ENABLED else "off."
+    return [(None, None, None, message)]
+
+
+def is_timing_enabled():
+    return TIMING_ENABLED
+
+
+def set_expanded_output(val):
+    global use_expanded_output
+    use_expanded_output = val
+
+
+def is_expanded_output():
+    return use_expanded_output
+
+
+_logger = logging.getLogger(__name__)
+
+
+def editor_command(command):
+    """
+    Is this an external editor command?
+    :param command: string
+    """
+    # It is possible to have `\e filename` or `SELECT * FROM \e`. So we check
+    # for both conditions.
+    return command.strip().startswith('ed')
+
+
+def get_filename(sql):
+    if sql.strip().startswith('ed'):
+        command, _, filename = sql.partition(' ')
+        return filename.strip() or None
+
+
+def get_editor_query(sql):
+    """Get the query part of an editor command."""
+    sql = sql.strip()
+    pattern = re.compile('^ed')
+    return pattern.sub('', sql)
+
+
+def open_external_editor(filename=None, sql=None):
+    """Open external editor, wait for the user to type in their query, return
+    the query.
+
+    :return: list with one tuple, query as first element.
+
+    """
+
+    message = None
+    filename = filename.strip().split(' ', 1)[0] if filename else None
+
+    sql = sql or ''
+    MARKER = '# Type your query above this line.\n'
+
+    # Populate the editor buffer with the partial sql (if available) and a
+    # placeholder comment.
+    query = click.edit('{sql}\n\n{marker}'.format(sql=sql, marker=MARKER),
+                       filename=filename, extension='.sql')
+
+    if filename:
+        try:
+            with open(filename, encoding='utf-8') as f:
+                query = f.read()
+        except IOError:
+            message = 'Error reading file: %s.' % filename
+
+    if query is not None:
+        query = query.split(MARKER, 1)[0].rstrip('\n')
+    else:
+        # Don't return None for the caller to deal with.
+        # Empty string is ok.
+        query = sql
+
+    return (query, message)
+
+
+@special_command('\\f', '\\f [name]', 'List or execute favorite queries.', arg_type=PARSED_QUERY, case_sensitive=True)
+def execute_favorite_query(cur, arg, **_):
+    """Returns (title, rows, headers, status)"""
+    if arg == '':
+        for result in list_favorite_queries():
+            yield result
+
+    query = favoritequeries.get(arg)
+    if query is None:
+        message = "No favorite query: %s" % (arg)
+        yield (None, None, None, message)
+    else:
+        for sql in sqlparse.split(query):
+            sql = sql.rstrip(';')
+            title = '> %s' % (sql)
+            cur.execute(sql)
+            if cur.description:
+                headers = [x[0] for x in cur.description]
+                yield (title, cur, headers, None)
+            else:
+                yield (title, None, None, None)
+
+
+def list_favorite_queries():
+    """List of all favorite queries.
+    Returns (title, rows, headers, status)"""
+
+    headers = ["Name", "Query"]
+    rows = [(r, favoritequeries.get(r)) for r in favoritequeries.list()]
+
+    if not rows:
+        status = '\nNo favorite queries found.' + favoritequeries.usage
+    else:
+        status = ''
+    return [('', rows, headers, status)]
+
+
+@special_command('\\fs', '\\fs name query', 'Save a favorite query.')
+def save_favorite_query(arg, **_):
+    """Save a new favorite query.
+    Returns (title, rows, headers, status)"""
+
+    usage = 'Syntax: \\fs name query.\n\n' + favoritequeries.usage
+    if not arg:
+        return [(None, None, None, usage)]
+
+    name, _, query = arg.partition(' ')
+
+    # If either name or query is missing then print the usage and complain.
+    if (not name) or (not query):
+        return [(None, None, None,
+                 usage + 'Err: Both name and query are required.')]
+
+    favoritequeries.save(name, query)
+    return [(None, None, None, "Saved.")]
+
+
+@special_command('\\fd', '\\fd [name]', 'Delete a favorite query.')
+def delete_favorite_query(arg, **_):
+    """Delete an existing favorite query.
+    """
+    usage = 'Syntax: \\fd name.\n\n' + favoritequeries.usage
+    if not arg:
+        return [(None, None, None, usage)]
+
+    status = favoritequeries.delete(arg)
+
+    return [(None, None, None, status)]
+
+
+@special_command('!', '! [command]', 'Execute a system shell commmand.', aliases=['system'], case_sensitive=False)
+def execute_system_command(arg, **_):
+    """Execute a system shell command."""
+    usage = "Syntax: system [command].\n"
+
+    if not arg:
+        return [(None, None, None, usage)]
+
+    try:
+        command = arg.strip()
+        if command.startswith('cd'):
+            ok, error_message = handle_cd_command(arg)
+            if not ok:
+                return [(None, None, None, error_message)]
+            return [(None, None, None, '')]
+
+        args = arg.split(' ')
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = process.communicate()
+        response = output if not error else error
+        # Python 3 returns bytes. This needs to be decoded to a string.
+        if isinstance(response, bytes):
+            encoding = locale.getpreferredencoding(False)
+            response = response.decode(encoding)
+
+        return [(None, None, None, response)]
+    except OSError as e:
+        return [(None, None, None, 'OSError: %s' % e.strerror)]
+
+
+def parseargfile(arg):
+    if arg.startswith('-o '):
+        mode = "w"
+        filename = arg[3:]
+    else:
+        mode = 'a'
+        filename = arg
+
+    if not filename:
+        raise TypeError('You must provide a filename.')
+
+    return {'file': filename, 'mode': mode}
+
+
+@special_command('spool', 'spool [-o] [filename]',
+                 'Append all results to an output file (overwrite using -o).',
+                 aliases=['spo', 'tee'], case_sensitive=False)
+def set_tee(arg, **_):
+    global tee_file
+
+    try:
+        tee_file = open(**parseargfile(arg))
+    except (IOError, OSError) as e:
+        raise OSError("Cannot write to file '{}': {}".format(e.filename, e.strerror))
+
+    return [(None, None, None, "")]
+
+
+def close_tee():
+    global tee_file
+    if tee_file:
+        tee_file.close()
+        tee_file = None
+
+
+@special_command('nospool', 'nospool', 'Stop writing results to an output file.',
+                 case_sensitive=False)
+def no_tee(arg, **_):
+    close_tee()
+    return [(None, None, None, "")]
+
+
+def write_tee(output):
+    global tee_file
+    if tee_file:
+        click.echo(output, file=tee_file, nl=False)
+
+
+@special_command('\\once', '\\o [-o] filename',
+                 'Append next result to an output file (overwrite using -o).',
+                 aliases=('\\o', ))
+def set_once(arg, **_):
+    global once_file
+
+    once_file = parseargfile(arg)
+
+    return [(None, None, None, "")]
+
+
+def write_once(output):
+    global once_file, written_to_once_file
+    if output and once_file:
+        try:
+            f = open(**once_file)
+        except (IOError, OSError) as e:
+            once_file = None
+            raise OSError("Cannot write to file '{}': {}".format(
+                e.filename, e.strerror))
+
+        with f:
+            f.write(output)
+            f.write(u"\n")
+        written_to_once_file = True
+
+
+def unset_once_if_written():
+    """Unset the once file, if it has been written to."""
+    global once_file
+    if written_to_once_file:
+        once_file = None
+
