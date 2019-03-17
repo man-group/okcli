@@ -3,6 +3,8 @@
 
 An Oracle-DB command line client with auto-completion and syntax highlighting that emulates the functionality of [sqlplus](http://www.oracle.com/technetwork/developer-tools/sql-developer/overview/index.html), based on [mycli](https://github.com/dbcli/mycli).
 
+For examples and config options see the [wiki](https://github.com/manahl/oracli/wiki/Examples).
+
 ## Installing
 
 ### TODO: update once on pypi
@@ -42,34 +44,38 @@ Options:
 ```
 
 ### help
+```
+Oracle-11g hr@xe:HR> help
++---------------+-----------------------------+------------------------------------------------------------+
+| Command       | Shortcut                    | Description                                                |
++---------------+-----------------------------+------------------------------------------------------------+
+| !             | ! [command]                 | Execute a system shell commmand.                           |
+| @             | a [filename]                | Execute commands from file.                                |
+| \f            | \f [name]                   | List or execute favorite queries.                          |
+| \fd           | \fd [name]                  | Delete a favorite query.                                   |
+| \fs           | \fs name query              | Save a favorite query.                                     |
+| \once         | \o [-o] filename            | Append next result to an output file (overwrite using -o). |
+| \timing       | \t                          | Toggle timing of commands.                                 |
+| connect       | connect [database]          | Reconnect to the database. Optional database argument.     |
+| describe      | desc[+] [schema.table]      | describe table.                                            |
+| ed            | ed [filename]               | Edit command with editor (uses $EDITOR).                   |
+| exec          | exec stored_proc_name(args) | Execute a stored-procedure.                                |
+| exit          | \q                          | Exit.                                                      |
+| format        | \T [format]                 | Change the format used to output results (html, csv etc.). |
+| help          | \?                          | Show this help.                                            |
+| list          | \l                          | List databases.                                            |
+| nopager       | \n                          | Disable pager, print to stdout.                            |
+| nospool       | nospool                     | Stop writing results to an output file.                    |
+| pager         | \P [command]                | Set PAGER. Print the query results via PAGER.              |
+| prompt        | \R                          | Change prompt format.                                      |
+| quit          | \q                          | Quit.                                                      |
+| refresh       | refresh                     | Refresh auto-completions.                                  |
+| show [schema] | show [schema]               | List all the visible tables in schema.                     |
+| spool         | spool [-o] [filename]       | Append all results to an output file (overwrite using -o). |
+| use           | use [schema]                | Change to a new schema.                                    |
++---------------+-----------------------------+------------------------------------------------------------+
 
 ```
-Oracle-12c user@host:schema> help
-+----------+-----------------------+------------------------------------------------------------+
-| Command  | Shortcut              | Description                                                |
-+----------+-----------------------+------------------------------------------------------------+
-| !        | system [command]      | Execute a system shell commmand.                           |
-| @        | a [filename]          | Execute commands from file.                                |
-| \once    | \o [-o] filename      | Append next result to an output file (overwrite using -o). |
-| \timing  | \t                    | Toggle timing of commands.                                 |
-| connect  | connect [database]    | Reconnect to the database. Optional database argument.     |
-| describe | desc[+] [table]       | describe table.                                            |
-| ed       | ed [filename]         | Edit command with editor (uses $EDITOR).                   |
-| exit     | \q                    | Exit.                                                      |
-| format   | \T [format]           | Change the format used to output results (html, csv etc.). |
-| help     | \?                    | Show this help.                                            |
-| list     | \l                    | List databases.                                            |
-| nopager  | \n                    | Disable pager, print to stdout.                            |
-| nospool  | nospool               | Stop writing results to an output file.                    |
-| pager    | \P [command]          | Set PAGER. Print the query results via PAGER.              |
-| prompt   | \R                    | Change prompt format.                                      |
-| quit     | \q                    | Quit.                                                      |
-| refresh  | refresh               | Refresh auto-completions.                                  |
-| spool    | spool [-o] [filename] | Append all results to an output file (overwrite using -o). |
-| use      | use [schema]          | Change to a new schema.                                    |
-+----------+-----------------------+------------------------------------------------------------+
-```
-
 
 ### Thanks
 Thanks to [mycli](https://github.com/dbcli/mycli). Most of the features (e.g. syntax highlighting, auto-complete) were implemented by the mycli core team for MySQL.
