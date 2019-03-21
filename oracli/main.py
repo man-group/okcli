@@ -41,6 +41,7 @@ from .lexer import OracleLexer
 from .packages.special.main import NO_QUERY
 from .sqlcompleter import SQLCompleter
 from .sqlexecute import SQLExecute
+import cx_Oracle
 
 click.disable_unicode_literals_warning = True
 try:
@@ -733,9 +734,12 @@ class OraCli(object):
 
 
 @click.command()
-@click.option('-h', '--host', help='Host address of the database.')
+
 @click.option('-u', '--user', help='User name to connect to the database.')
 @click.option('-p', '--password', help='Password to connect to the database.')
+@click.option('-h', '--host', help='Host address of the database.', required=False)
+@click.option('-p', '--port', help='Database service host.', reqiured=False)
+@click.option('-s', '--service-name', help='Service name.', reqiured=False)
 @click.option('-v', '--version', is_flag=True, help='Output oracli\'s version.')
 @click.option('-D', '--database', 'database', help='Database to use.')
 @click.option('-R', '--prompt', 'prompt',
@@ -760,19 +764,21 @@ class OraCli(object):
 @click.option('-@', '--filename', type=str,
               help='Execute commands in a file.')
 @click.argument('sqlplus', default='', nargs=1)
-def cli(sqlplus, user, host, password, database,
+def cli(sqlplus, user, host, password, port, service_name,
         version, prompt, logfile, login_path,
         auto_vertical_output, table, csv,
         warn, execute, filename, oraclirc):
     """An Oracle-DB terminal client with auto-completion and syntax highlighting.
 
-    \b
     Examples:
       - oracli -u my_user -h my_host.com -D schema
-      - oracli user/password@tns_name
-      - oracli user/password@tns_name -D schema
-      - oracli user/password@tns_name -e "query"
-      - oracli user@tns_name -@ query_file.sql
+      - oracli user/password@[db-host:port/]service_name
+      - oracli user/password@[db-host:port/]service_name -e "sql statement to run"
+      If service_name is defined in your local tnsnames.ora file then you can use the sid directly:
+      - oracli user@service_name -@ query_file.sql
+      - oracli user/password@service_name -D schema
+      - oracli user/password@service_name -e "sql statement to execute"
+      - oracli user@service_name -@ query_file.sql
     """
 
     if version:
@@ -780,7 +786,9 @@ def cli(sqlplus, user, host, password, database,
         sys.exit(0)
 
     if sqlplus:
-        user, password, host = parse_sqlplus_arg(sqlplus)
+        user, password, dsn = parse_sqlplus_arg(sqlplus)
+    else:
+        user, password, dsn = user, password, cx_Oracle.makedsn(host, port, service_name=service_name) 
 
     oracli = OraCli(prompt=prompt, logfile=logfile,
                     login_path=login_path,
@@ -932,22 +940,69 @@ def confirm_ddl_query(queries):
         return click.prompt(prompt_text, type=bool)
 
 
-def parse_sqlplus_arg(database):
+
+def parse_connection_params(conn_string, user, password, host, port, service_name):
+    if conn_string  is not None:
+
+
+
+def to_dsn(conn_string)):
+    """Transform sqplus conn. string to oracle-dsn string.
+
+    Parameters
+    ----------
+    conn_string: `str`
+        host:port/service-name
+    
+    Return
+    ------
+    str
+        Oracle dsn string.
+
+    Raises
+    ------
+    ValueError
+        If the connection-string is not correctly formatted.
+    """
+    try:
+        sep = conn_string.rindex('/')
+        host_port, service_name = conn_string[:sep], conn_string[sep+1:]
+        sep = host_port.rindex(':')
+        host, port = host_port[:sep], host_port[sep:]
+        port = int(port)
+        dsn = cx_Oracle.makedsn(host, int(port), service_name=service_name)
+        return dsn
+    except :
+        raise ValueError('Could not parse specified DSN {}: expected format "host:port/service_name"'.format(conn_string))
+
+
+def parse_sqlplus_arg(conn_string):
     """Parses an sqlplus connection string (user/passwd@host) unpacking the user, password and host.
 
-    :param database: sqlplus-like connection string
-    :return: (?user, ?password, ?host)
-    :raises: ValueError
+    Parameters
+    ----------
+    conn_string: `str`
+        sqlplus-like connection string
+    
+    Returns
+    -------
+    (str, str, str)
+    (user, password, oracle-dsn)
+
+    Raises
+    ------
+    ValueError
         when database is not of the form <user>/<?password>@<host>
     """
     try:
-        credentials, host = database.split('@')
+        credentials, service_name = conn_string.split('@')
         if '/' in credentials:
             user, password = credentials.split('/')
         else:
             user = credentials
             password = None
-        return (user, password, host)
+        dsn = to_dsn(service_name)
+        return (user, password, dsn)
     except ValueError:
         raise ValueError('Invalid sqlplus connection string {}: expected <user>/?<pass>@<host>'.format(database))
 
