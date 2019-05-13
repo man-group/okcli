@@ -1,5 +1,6 @@
 # okcli
 [![Build status](https://circleci.com/gh/manahl/okcli.svg?style=svg)](https://circleci.com/gh/manahl/okcli)
+[![PyPi version](https://img.shields.io/pypi/pyversions/okcli.svg)](https://pypi.org/project/okcli/)
 
 Man Okcli for Oracle Database.
 
