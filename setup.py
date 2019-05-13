@@ -12,7 +12,11 @@ with open('okcli/__init__.py', 'rb') as f:
     version = str(ast.literal_eval(_version_re.search(
         f.read().decode('utf-8')).group(1)))
 
-description = 'CLI for Oracle DB Database. With auto-completion and syntax highlighting.'
+description = 'A CLI for Oracle DB Database with auto-completion and syntax highlighting.'
+
+def get_long_description():
+    with open('README.md', 'r') as f:
+        return f.read()
 
 
 def get_requirements():
@@ -27,8 +31,7 @@ setup(
     author_email='ManAHLTech@ahl.com',
     url='https://github.com/manahl/okcli',
     packages=find_packages(),
-    description=description,
-    long_description=description,
+    long_description=get_long_description(),
     long_description_content_type='text/markdown',
     install_requires=get_requirements(),
     include_package_data=True,
