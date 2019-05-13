@@ -1,4 +1,4 @@
-oracli License
+okcli License
 ==============
 
 Copyright (c) 2019, AHL
@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-oracli is based on mycli by Amjith Ramanujam. Its license is as follows.
+okcli is based on mycli by Amjith Ramanujam. Its license is as follows.
 
 mycli License
 =============

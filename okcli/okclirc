@@ -16,7 +16,7 @@ multi_line = False
 ddl_warning = True
 
 # log_file location.
-log_file = ~/.ocli.log
+log_file = ~/.okcli.log
 
 # Default log level. Possible values: "CRITICAL", "ERROR", "WARNING", "INFO"
 # and "DEBUG". "NONE" disables logging.
@@ -24,7 +24,7 @@ log_level = INFO
 
 # Log every query and its results to a file. Enable this by uncommenting the
 # line below.
-# audit_log = ~/.oracli-audit.log
+# audit_log = ~/.okcli-audit.log
 
 # Timing of sql statments and table rendering.
 timing = True
