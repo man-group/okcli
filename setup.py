@@ -26,6 +26,7 @@ setup(
     author_email='ManAHLTech@ahl.com',
     url='https://github.com/manahl/okcli',
     packages=find_packages(),
+    description=description,
     long_description=get_long_description(),
     long_description_content_type='text/markdown',
     install_requires=[
