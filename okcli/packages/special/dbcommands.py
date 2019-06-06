@@ -19,6 +19,7 @@ USERS_QUERY = '''select username from all_users'''
 FUNCTIONS_QUERY = '''select object_name from ALL_OBJECTS where owner=:1 and object_type in ('FUNCTION','PROCEDURE')'''
 ALL_TABLE_COLUMNS_QUERY = '''select table_name, column_name from all_tab_cols where owner=:1'''
 COLUMNS_QUERY = '''select column_name, data_type, data_length, nullable from all_tab_cols where owner=:1 and table_name=:2 '''
+VIEW_SRC_QUERY = '''select text as VIEW_DEFINITION from all_views where owner=upper(:1) and view_name=:2'''
 CONNECTION_ID_QUERY = '''select sys_context('USERENV', 'SID') from dual'''
 CURRENT_SCHEMA_QUERY = '''select sys_context('USERENV', 'CURRENT_SCHEMA') from dual'''
 PRIMARY_KEY_QUERY = '''select  column_name as PRIMARY_KEY_COLUMNS from all_constraints ac inner join all_cons_columns acc on ac.table_name=acc.table_name and acc.constraint_name=ac.constraint_name where ac.table_name=:1 and ac.owner=:2 and ac.constraint_type='P' '''
@@ -105,6 +106,11 @@ def describe(cur, arg, arg_type=PARSED_QUERY, verbose=True):
     yield primary_key
     foreign_keys = _fetch_all(cur, FOREIGN_KEY_QUERY, (table, ))[0]
     yield foreign_keys
+    view_src = _fetch_all(cur, VIEW_SRC_QUERY, (schema, table))[0]
+    has_view_src = view_src and len(view_src[1])
+    if has_view_src:
+        yield view_src
+
     raise StopIteration
 
 
