@@ -132,10 +132,11 @@ SYSDATE
 ```
 
 # describe 
-The ``describe`` command will show for a given table:
+The ``describe`` command will show for a given table or view:
 * each column, its datatype, if it's nullable
-* primary-key constraints
-* foreign-key constraints
+* primary-key constraints (if it's a table)
+* foreign-key constraints (if it's a view)
+* the SQL query used to create the view (if it's a view)
 
 For example:
 ```
