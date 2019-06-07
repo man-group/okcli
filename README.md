@@ -133,9 +133,9 @@ SYSDATE
 
 # describe 
 The ``describe`` command will show for a given table or view:
-* each column, its datatype, if it's nullable
+* each column name, its datatype, if it's nullable
 * primary-key constraints (if it's a table)
-* foreign-key constraints (if it's a view)
+* foreign-key constraints (if it's a table)
 * the SQL query used to create the view (if it's a view)
 
 For example:
