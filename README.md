@@ -13,6 +13,7 @@ An Oracle-DB command line client with auto-completion and syntax highlighting th
 * [user guide](#user-guide)
 * [usage](#usage)
 * [faq](#faq)
+* [ipython](#ipython)
 
 
 # install
@@ -86,6 +87,7 @@ Options:
 * [list all schemas in database](#list)
 * [list all tables in  a schema](#show)
 * [spool (append) query output to a file](#spool)
+* [ipython](#ipython)
 * [exit the app](#exit)
 
 
@@ -375,7 +377,21 @@ Oracle-11g hr@xe:HR> select * from hr.DEPARTMENTS where MANAGER_ID > 200
 +---------------+------------------+------------+-------------+
 ```
 
+# ipython
+`okcli` has support for `ipython` (and hence Jupiterhub notebooks). 
 
+To drop into an `okcli` shell from an ipython session, load the `okcli.magic` module. On exiting the `okcli` shell you drop back into the `ipython` shell.
+
+The  database  connection is cached so subsequent ipython `okcli` calls will drop back into the `okcli` shell already logged in.
+
+```
+ipython
+In [1]: %load_ext okcli.magic
+In [2]: okcli system@xe
+Oracle-11g system@xe:SYSTEM>
+
+
+```
 # exit
 Exit the CLI app with ``exit``, ``quit`` or  ``\q``.
 
