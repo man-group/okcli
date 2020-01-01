@@ -378,20 +378,59 @@ Oracle-11g hr@xe:HR> select * from hr.DEPARTMENTS where MANAGER_ID > 200
 ```
 
 # ipython
-`okcli` has support for `ipython` (and hence Jupiterhub notebooks). 
 
-To drop into an `okcli` shell from an ipython session, load the `okcli.magic` module. On exiting the `okcli` shell you drop back into the `ipython` shell.
+`okcli` has support for `ipython` (and hence Jupiterhub notebooks), giving full support for eg. auto-complete on queries from within `ipython`.
 
-The  database  connection is cached so subsequent ipython `okcli` calls will drop back into the `okcli` shell already logged in.
+To drop into an `okcli` shell from an ipython session, load the `okcli.magic` module. On exiting the `okcli` shell you drop back into the `ipython` shell with the last query results, as shown below.
+
+The database connection is cached so subsequent `okcli` calls from the `ipython` session will drop back into the `okcli` shell already logged in.
 
 ```
-ipython
+root@6df4c32479df:/# ipython
+Python 2.7.15rc1 (default, Nov 12 2018, 14:31:15)
+Type "copyright", "credits" or "license" for more information.
+
+IPython 5.8.0 -- An enhanced Interactive Python.
+?         -> Introduction and overview of IPython's features.
+%quickref -> Quick reference.
+help      -> Python's own help system.
+object?   -> Details about 'object', use 'object??' for extra details.
+
 In [1]: %load_ext okcli.magic
-In [2]: okcli system@xe
-Oracle-11g system@xe:SYSTEM>
 
+In [2]: okcli system/oracle@xe
+Connected to: xe
+Oracle-11g system@xe:SYSTEM> select  * from hr.COUNTRIES where REGION_ID=1
++------------+----------------+-----------+
+| COUNTRY_ID | COUNTRY_NAME   | REGION_ID |
++------------+----------------+-----------+
+| BE         | Belgium        | 1         |
+| CH         | Switzerland    | 1         |
+| DE         | Germany        | 1         |
+| DK         | Denmark        | 1         |
+| FR         | France         | 1         |
+| IT         | Italy          | 1         |
+| NL         | Netherlands    | 1         |
+| UK         | United Kingdom | 1         |
++------------+----------------+-----------+
+8 row s in set
+Time: 0.002s
+Oracle-11g system@xe:SYSTEM> exit
+0 rows affected.
+Out[2]:
+[(u'BE', u'Belgium', 1),
+ (u'CH', u'Switzerland', 1),
+ (u'DE', u'Germany', 1),
+ (u'DK', u'Denmark', 1),
+ (u'FR', u'France', 1),
+ (u'IT', u'Italy', 1),
+ (u'NL', u'Netherlands', 1),
+ (u'UK', u'United Kingdom', 1)]
+
+In [3]: res = _
 
 ```
+
 # exit
 Exit the CLI app with ``exit``, ``quit`` or  ``\q``.
 

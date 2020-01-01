@@ -28,6 +28,7 @@ def okcli_line_magic(line):
         username, password, host  = parse_sqlplus_arg(line.strip())
         database=''
         _okcli.connect(database=database, host=host, user=username, passwd=password)
+        _okcli.url = to_url(username, password, host) 
 
         # For convenience, print the connection alias
         print('Connected to: {}'.format(host))
@@ -47,5 +48,7 @@ def okcli_line_magic(line):
 
     if q.successful:
         ipython = get_ipython()
-        return ipython.run_cell_magic('sql', line, q.query)
+        return ipython.run_cell_magic('sql', _okcli.url, q.query)
 
+def to_url(username, password, dsn):
+    return 'oracle+cx_oracle://{}:{}@{}'.format(username, password, dsn)

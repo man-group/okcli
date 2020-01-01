@@ -12,7 +12,7 @@ version = okcli.__version__
 description = 'A CLI for Oracle DB Database with auto-completion and syntax highlighting.'
 
 def get_long_description():
-    with open('README.md', 'r') as f:
+    with open('README.md', 'r', encoding='utf-8') as f:
         return f.read()
 
 
