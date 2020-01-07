@@ -4,6 +4,7 @@ import logging
 import os
 import os.path
 import sys
+from sys import exit
 import threading
 import traceback
 from collections import namedtuple
@@ -287,7 +288,6 @@ class OCli(object):
         return {x: get(x) for x in keys}
 
     def connect(self, database='', user='', passwd='', host=''):
-
 
         cnf = {'database': None,
                'user': None,

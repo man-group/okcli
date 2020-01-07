@@ -36,6 +36,7 @@ setup(
         'configobj >= 5.0.5',
         'pytest',
         'mock',
+        'ipython-sql',
         ],
     include_package_data=True,
     entry_points={
